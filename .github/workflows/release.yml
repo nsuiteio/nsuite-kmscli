@@ -17,5 +17,6 @@ jobs:
         with:
           version: latest
           args: release --rm-dist
+          workdir: ./cmd/awseoa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
