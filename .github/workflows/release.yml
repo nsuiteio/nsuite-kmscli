@@ -2,7 +2,7 @@ name: Release if main
 on: [push]
 
 jobs:
-  setup:
+  release:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
@@ -21,7 +21,9 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Build All
-        run: go build
+        run: |
+          go get
+          go build
 
       - uses: goreleaser/goreleaser-action@v2
         with:
