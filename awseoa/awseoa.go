@@ -73,7 +73,7 @@ func NewSigner(svc *kms.Client, id string, chainID *big.Int) (*Signer, error) {
 
 func CreateSigner(svc *kms.Client, chainID *big.Int) (*Signer, error) {
 	in := new(kms.CreateKeyInput)
-	in.CustomerMasterKeySpec = kmstypes.CustomerMasterKeySpecEccSecgP256k1
+	in.KeySpec = kmstypes.KeySpecEccSecgP256k1
 	in.KeyUsage = kmstypes.KeyUsageTypeSignVerify
 	in.Origin = kmstypes.OriginTypeAwsKms
 
