@@ -25,6 +25,12 @@ jobs:
           go get
           go build
 
+      - name: Build on AWSEOA
+        run: |
+          go get
+          go build
+        working-directory: ./cmd/awseoa
+
       - uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
