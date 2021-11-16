@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	kmstypes "github.com/aws/aws-sdk-go-v2/service/kms/types"
-	awseoa "github.com/rmanzoku/go-awseoa/v2"
-	"github.com/rmanzoku/go-awseoa/v2/kmsutil"
+	"github.com/doublejumptokyo/nsuite-kmscli/awseoa"
+	"github.com/doublejumptokyo/nsuite-kmscli/kmsutil"
 )
 
 var (
@@ -109,7 +109,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	listFlag.Parse(os.Args[2:])
+	if err := listFlag.Parse(os.Args[2:]); err != nil {
+		panic(err)
+	}
 
 	switch os.Args[1] {
 	case "list":
