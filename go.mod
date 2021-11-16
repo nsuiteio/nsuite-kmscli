@@ -1,4 +1,4 @@
-module github.com/rmanzoku/go-awseoa/v2
+module github.com/doublejumptokyo/nsuite-kmscli
 
 go 1.17
 
