@@ -1,4 +1,4 @@
-name: Release if main
+name: Release tagged version
 on:
   push:
     tags:
