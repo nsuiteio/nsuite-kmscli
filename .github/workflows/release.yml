@@ -1,0 +1,40 @@
+name: Release if main
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ^1.17
+
+      - uses: actions/cache@v2.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build All
+        run: |
+          go get
+          go build
+
+      - name: Build on AWSEOA
+        run: |
+          go get
+          go build
+        working-directory: ./cmd/awseoa
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "cmd/awseoa/awseoa"
+          token: ${{ secrets.GITHUB_TOKEN }}
