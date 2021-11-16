@@ -109,7 +109,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	listFlag.Parse(os.Args[2:])
+	if err := listFlag.Parse(os.Args[2:]); err != nil {
+		panic(err)
+	}
 
 	switch os.Args[1] {
 	case "list":
