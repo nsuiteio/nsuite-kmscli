@@ -31,10 +31,7 @@ jobs:
           go build
         working-directory: ./cmd/awseoa
 
-      - uses: goreleaser/goreleaser-action@v2
+      - uses: ncipollo/release-action@v1
         with:
-          version: latest
-          args: release --rm-dist
-          workdir: ./cmd/awseoa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "cmd/awseoa/awseoa"
+          token: ${{ secrets.GITHUB_TOKEN }}
