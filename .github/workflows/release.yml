@@ -5,8 +5,12 @@ on:
       - "v*.*.*"
 
 jobs:
-  release:
-    runs-on: macos-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -26,7 +30,28 @@ jobs:
       - name: Build 
         run: go build
 
+      - uses: actions/upload-artifact@v2
+        with:
+          name: nsuite-kmscli-${{ runner.os }}
+          path: nsuite-kmscli*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+
+      - name: Archive
+        run: |
+          ls -la *
+          for file in nsuite-kmscli-*
+          do
+            chmod +x $file/*
+            zip $(basename $file).zip $file/*
+          done
+          ls -la *
+
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "nsuite-kmscli"
+          artifacts: "*.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
