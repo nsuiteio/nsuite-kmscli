@@ -2,25 +2,20 @@ name: Check code
 on: [push]
 
 jobs:
-  setup:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-go@v2
         with:
-          go-version: ^1.17
-
-  format:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
+          go-version: 1.17
       - run: if [ "$((gofmt -s -d . | tee /dev/stderr) | wc -l)" -gt 0 ]; then exit 1; fi
 
   lint:
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
       - uses: golangci/golangci-lint-action@v2

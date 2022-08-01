@@ -6,9 +6,12 @@ AWS Managed EOA is an Ethereum EOA(Externally Owned Account) using [Asymmetric K
 ```sh
 $ export AWS_REGION=YOUR_REGION
 $ export AWS_PROFILE=YOUR_PROFILE
-$ awseoa list
+$ nsuite-kmscli list
 # list keys
 
-$ awseoa new
+$ nsuite-kmscli new
 # create new key and set alias as address
+
+$ nsuite-kmscli add-tags 01234567-abcd-1234-9876-02468ace79bf tag1:value1 tag2:value2
+# tags added to key
 ```
