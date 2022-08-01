@@ -111,7 +111,7 @@ func (s Signer) SetAlias(alias string) error {
 	_, err := s.Client.CreateAlias(context.TODO(), in)
 	if err != nil {
 		e := errors.New("AlreadyExistsException")
-		if errors.As(err, &e) {
+		if errors.As(err, (interface{})(&e)) {
 			return nil
 		}
 		return err
