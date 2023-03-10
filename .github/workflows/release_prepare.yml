@@ -1,0 +1,38 @@
+name: Release prepare
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+
+jobs:
+  mk_release_branch:
+    if: ${{ startsWith(github.event.inputs.version, 'v') }}
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.event.inputs.version }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: sample
+        run: echo $BASE_NAME
+
+      - name: Setup git config
+        run: |
+          git config --global user.email "devel@nsuite.io"
+          git config --global user.name "GitHub Actions"
+
+      - name: Make release branch
+        run: |
+          git checkout -b release/$VERSION
+          git push --set-upstream origin release/$VERSION
+
+      - uses: repo-sync/pull-request@v2
+        with:
+          pr_title: Release ${{ github.event.inputs.version }}
+          source_branch: release/${{ github.event.inputs.version }}
+          destination_branch: "main"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
