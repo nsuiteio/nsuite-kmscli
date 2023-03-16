@@ -93,5 +93,6 @@ jobs:
         with:
           tag: ${{ env.TAG_NAME }}
           draft: true
+          generateReleaseNotes: true
           artifacts: "*.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
