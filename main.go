@@ -31,10 +31,10 @@ var commands = []struct {
 		[]string{"[keyID] [name:value] [name:value]..."}},
 }
 
-func buildUsageText() string {
+func buildUsageText(name string) string {
 	var buffer bytes.Buffer
 
-	if _, err := fmt.Fprintf(&buffer, "Usage of nsuite-kmscli:\n"); err != nil {
+	if _, err := fmt.Fprintf(&buffer, "Usage of %s:\n", name); err != nil {
 		return ""
 	}
 
@@ -62,8 +62,8 @@ func buildUsageText() string {
 	return buffer.String()
 }
 
-func usage() {
-	fmt.Println(buildUsageText())
+func usage(name string) {
+	fmt.Println(buildUsageText(name))
 }
 
 var (
@@ -151,8 +151,12 @@ func main() {
 
 	listFlag.BoolVar(&flagTags, "tags", flagTags, "Show tags")
 
+	myName := ""
+	if len(os.Args) > 0 {
+		myName = os.Args[0]
+	}
 	if len(os.Args) == 1 {
-		usage()
+		usage(myName)
 		return
 	}
 
@@ -180,7 +184,7 @@ func main() {
 		keyID := os.Args[2]
 		err = ShowAddress(svc, keyID)
 	default:
-		usage()
+		usage(myName)
 	}
 
 	if err != nil {
