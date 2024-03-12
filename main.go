@@ -82,6 +82,15 @@ func New(svc *kms.Client) (err error) {
 	return
 }
 
+func ShowAddress(svc *kms.Client, id string) (err error) {
+	signer, err := awseoa.NewSigner(svc, id, big.NewInt(4))
+	if err != nil {
+		return
+	}
+	fmt.Println(signer.Address().String())
+	return
+}
+
 func usage() {
 	fmt.Println("Usage of awseoa:")
 	fmt.Println("")
@@ -97,6 +106,7 @@ func main() {
 	listFlag := flag.NewFlagSet("list", flag.ExitOnError)
 	_ = flag.NewFlagSet("new", flag.ExitOnError)
 	_ = flag.NewFlagSet("add-tags", flag.ExitOnError)
+	_ = flag.NewFlagSet("show-address", flag.ExitOnError)
 
 	listFlag.BoolVar(&flagTags, "tags", flagTags, "Show tags")
 
@@ -125,6 +135,9 @@ func main() {
 			parts := strings.Split(os.Args[i], ":")
 			err = AddTag(svc, keyID, parts[0], parts[1])
 		}
+	case "show-address":
+		keyID := os.Args[2]
+		err = ShowAddress(svc, keyID)
 	default:
 		usage()
 	}
