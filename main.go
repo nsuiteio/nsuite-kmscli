@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -14,6 +15,56 @@ import (
 	"github.com/doublejumptokyo/nsuite-kmscli/awseoa"
 	"github.com/doublejumptokyo/nsuite-kmscli/kmsutil"
 )
+
+var commands = []struct {
+	name        string
+	description string
+	examples    []string
+}{
+	{"list", "Show list of keys",
+		[]string{"-tags=false"}},
+	{"new", "Create key",
+		[]string{}},
+	{"show-address", "Show address of key",
+		[]string{"[keyID]"}},
+	{"add-tags", "add tag to exist key",
+		[]string{"[keyID] [name:value] [name:value]..."}},
+}
+
+func buildUsageText() string {
+	var buffer bytes.Buffer
+
+	if _, err := fmt.Fprintf(&buffer, "Usage of nsuite-kmscli:\n"); err != nil {
+		return ""
+	}
+
+	for _, command := range commands {
+		if _, err := fmt.Fprintf(&buffer,
+			"%12s  %s\n",
+			command.name,
+			command.description,
+		); err != nil {
+			return ""
+		}
+		for _, example := range command.examples {
+			if _, err := fmt.Fprintf(&buffer,
+				"              %s\n",
+				example,
+			); err != nil {
+				return ""
+			}
+		}
+		if _, err := fmt.Fprintln(&buffer); err != nil {
+			return ""
+		}
+	}
+
+	return buffer.String()
+}
+
+func usage() {
+	fmt.Println(buildUsageText())
+}
 
 var (
 	flagTags = true
@@ -89,16 +140,6 @@ func ShowAddress(svc *kms.Client, id string) (err error) {
 	}
 	fmt.Println(signer.Address().String())
 	return
-}
-
-func usage() {
-	fmt.Println("Usage of awseoa:")
-	fmt.Println("")
-	fmt.Println("   list     Show list of keys")
-	fmt.Println("            --tags: with tags")
-	fmt.Println("   new      Create key")
-	fmt.Println("   add-tags [keyID] [name:value] [name:value]...")
-	fmt.Println("            add tag to exist key")
 }
 
 func main() {
