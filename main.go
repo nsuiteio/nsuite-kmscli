@@ -72,13 +72,21 @@ var (
 
 func List(svc *kms.Client) (err error) {
 
+	var aliases []kmstypes.AliasListEntry
 	in := &kms.ListAliasesInput{}
-	out, err := svc.ListAliases(context.TODO(), in)
-	if err != nil {
-		return
+	for {
+		out, err := svc.ListAliases(context.TODO(), in)
+		if err != nil {
+			return err
+		}
+		aliases = append(aliases, out.Aliases...)
+		if out.NextMarker == nil {
+			break
+		}
+		in.Marker = out.NextMarker
 	}
 
-	for _, a := range out.Aliases {
+	for _, a := range aliases {
 		alias := "None"
 		if a.AliasName != nil {
 			alias = *a.AliasName
