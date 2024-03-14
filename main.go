@@ -31,46 +31,71 @@ var commands = []struct {
 		[]string{"[keyID] [name:value] [name:value]..."}},
 }
 
-func buildUsageText(name string) string {
+func buildCommands() []*flag.FlagSet {
+	var results []*flag.FlagSet
+
+	for _, command := range commands {
+		flagSet := flag.NewFlagSet(command.name, flag.ExitOnError)
+		flagSet.Usage = func() {
+			if _, err := fmt.Fprintf(flagSet.Output(),
+				"%s  %s\n",
+				command.name,
+				command.description,
+			); err != nil {
+				panic(err)
+			}
+			indent := strings.Repeat(" ", len(command.name))
+			for _, example := range command.examples {
+				if _, err := fmt.Fprintf(flagSet.Output(),
+					"%s  %s\n",
+					indent,
+					example,
+				); err != nil {
+					panic(err)
+				}
+			}
+		}
+		results = append(results, flagSet)
+	}
+	return results
+}
+
+func usage(name string, commandList []*flag.FlagSet) {
 	var buffer bytes.Buffer
 
 	if _, err := fmt.Fprintf(&buffer, "Usage of %s:\n", name); err != nil {
-		return ""
+		panic(err)
 	}
 
-	for _, command := range commands {
-		if _, err := fmt.Fprintf(&buffer,
-			"%12s  %s\n",
-			command.name,
-			command.description,
-		); err != nil {
-			return ""
+	var maxLen int
+	for _, command := range commandList {
+		nameLen := len(command.Name())
+		if maxLen < nameLen {
+			maxLen = nameLen
 		}
-		for _, example := range command.examples {
+	}
+
+	for _, command := range commandList {
+		var tmp bytes.Buffer
+		command.SetOutput(&tmp)
+		command.Usage()
+		command.SetOutput(os.Stdout)
+		indent := strings.Repeat(" ", maxLen-len(command.Name()))
+		for _, line := range strings.Split(tmp.String(), "\n") {
 			if _, err := fmt.Fprintf(&buffer,
-				"              %s\n",
-				example,
+				"%s%s\n",
+				indent,
+				line,
 			); err != nil {
-				return ""
+				panic(err)
 			}
 		}
-		if _, err := fmt.Fprintln(&buffer); err != nil {
-			return ""
-		}
 	}
 
-	return buffer.String()
+	fmt.Println(buffer.String())
 }
 
-func usage(name string) {
-	fmt.Println(buildUsageText(name))
-}
-
-var (
-	flagTags = true
-)
-
-func List(svc *kms.Client) (err error) {
+func List(svc *kms.Client, flagTags bool) (err error) {
 
 	var aliases []kmstypes.AliasListEntry
 	in := &kms.ListAliasesInput{}
@@ -152,19 +177,26 @@ func ShowAddress(svc *kms.Client, id string) (err error) {
 
 func main() {
 	var err error
-	listFlag := flag.NewFlagSet("list", flag.ExitOnError)
-	_ = flag.NewFlagSet("new", flag.ExitOnError)
-	_ = flag.NewFlagSet("add-tags", flag.ExitOnError)
-	_ = flag.NewFlagSet("show-address", flag.ExitOnError)
-
-	listFlag.BoolVar(&flagTags, "tags", flagTags, "Show tags")
+	commandList := buildCommands()
 
 	myName := ""
 	if len(os.Args) > 0 {
 		myName = os.Args[0]
 	}
-	if len(os.Args) == 1 {
-		usage(myName)
+	if len(os.Args) < 2 {
+		usage(myName, commandList)
+		return
+	}
+	commandName := os.Args[1]
+	var command *flag.FlagSet
+	for _, cmd := range commandList {
+		if cmd.Name() == commandName {
+			command = cmd
+			break
+		}
+	}
+	if command == nil {
+		usage(myName, commandList)
 		return
 	}
 
@@ -172,13 +204,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := listFlag.Parse(os.Args[2:]); err != nil {
-		panic(err)
-	}
 
-	switch os.Args[1] {
+	switch command.Name() {
 	case "list":
-		err = List(svc)
+		flagTags := true
+		command.BoolVar(&flagTags, "tags", flagTags, "Show tags")
+		if err := command.Parse(os.Args[2:]); err != nil {
+			command.Usage()
+			panic(err)
+		}
+		err = List(svc, flagTags)
 	case "new":
 		err = New(svc)
 	case "add-tags":
@@ -192,7 +227,7 @@ func main() {
 		keyID := os.Args[2]
 		err = ShowAddress(svc, keyID)
 	default:
-		usage(myName)
+		usage(myName, commandList)
 	}
 
 	if err != nil {
