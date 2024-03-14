@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -15,19 +16,102 @@ import (
 	"github.com/doublejumptokyo/nsuite-kmscli/kmsutil"
 )
 
-var (
-	flagTags = true
-)
+var commands = []struct {
+	name        string
+	description string
+	examples    []string
+}{
+	{"list", "Show list of keys",
+		[]string{"-tags=false"}},
+	{"new", "Create key",
+		[]string{}},
+	{"show-address", "Show address of key",
+		[]string{"[keyID]"}},
+	{"add-tags", "add tag to exist key",
+		[]string{"[keyID] [name:value] [name:value]..."}},
+}
 
-func List(svc *kms.Client) (err error) {
+func buildCommands() []*flag.FlagSet {
+	var results []*flag.FlagSet
 
-	in := &kms.ListAliasesInput{}
-	out, err := svc.ListAliases(context.TODO(), in)
-	if err != nil {
-		return
+	for _, command := range commands {
+		flagSet := flag.NewFlagSet(command.name, flag.ExitOnError)
+		flagSet.Usage = func() {
+			if _, err := fmt.Fprintf(flagSet.Output(),
+				"%s  %s\n",
+				command.name,
+				command.description,
+			); err != nil {
+				panic(err)
+			}
+			indent := strings.Repeat(" ", len(command.name))
+			for _, example := range command.examples {
+				if _, err := fmt.Fprintf(flagSet.Output(),
+					"%s  %s\n",
+					indent,
+					example,
+				); err != nil {
+					panic(err)
+				}
+			}
+		}
+		results = append(results, flagSet)
+	}
+	return results
+}
+
+func usage(name string, commandList []*flag.FlagSet) {
+	var buffer bytes.Buffer
+
+	if _, err := fmt.Fprintf(&buffer, "Usage of %s:\n", name); err != nil {
+		panic(err)
 	}
 
-	for _, a := range out.Aliases {
+	var maxLen int
+	for _, command := range commandList {
+		nameLen := len(command.Name())
+		if maxLen < nameLen {
+			maxLen = nameLen
+		}
+	}
+
+	for _, command := range commandList {
+		var tmp bytes.Buffer
+		command.SetOutput(&tmp)
+		command.Usage()
+		command.SetOutput(os.Stdout)
+		indent := strings.Repeat(" ", maxLen-len(command.Name()))
+		for _, line := range strings.Split(tmp.String(), "\n") {
+			if _, err := fmt.Fprintf(&buffer,
+				"%s%s\n",
+				indent,
+				line,
+			); err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	fmt.Println(buffer.String())
+}
+
+func List(ctx context.Context, svc *kms.Client, flagTags bool) (err error) {
+
+	var aliases []kmstypes.AliasListEntry
+	in := &kms.ListAliasesInput{}
+	for {
+		out, err := svc.ListAliases(ctx, in)
+		if err != nil {
+			return err
+		}
+		aliases = append(aliases, out.Aliases...)
+		if out.NextMarker == nil {
+			break
+		}
+		in.Marker = out.NextMarker
+	}
+
+	for _, a := range aliases {
 		alias := "None"
 		if a.AliasName != nil {
 			alias = *a.AliasName
@@ -44,7 +128,7 @@ func List(svc *kms.Client) (err error) {
 		tags := ""
 		if flagTags {
 			in := &kms.ListResourceTagsInput{KeyId: a.TargetKeyId}
-			out, err := svc.ListResourceTags(context.TODO(), in)
+			out, err := svc.ListResourceTags(ctx, in)
 			if err != nil {
 				return err
 			}
@@ -59,7 +143,7 @@ func List(svc *kms.Client) (err error) {
 	return
 }
 
-func AddTag(svc *kms.Client, keyID, tagKey, tagValue string) (err error) {
+func AddTag(ctx context.Context, svc *kms.Client, keyID, tagKey, tagValue string) (err error) {
 	in := &kms.TagResourceInput{
 		KeyId: aws.String(keyID),
 		Tags: []kmstypes.Tag{
@@ -69,64 +153,98 @@ func AddTag(svc *kms.Client, keyID, tagKey, tagValue string) (err error) {
 			},
 		},
 	}
-	_, err = svc.TagResource(context.TODO(), in)
+	_, err = svc.TagResource(ctx, in)
 	return
 }
 
-func New(svc *kms.Client) (err error) {
-	signer, err := awseoa.CreateSigner(svc, big.NewInt(4))
+func New(ctx context.Context, svc *kms.Client) (err error) {
+	signer, err := awseoa.CreateSigner(ctx, svc, big.NewInt(4))
 	if err != nil {
 		return
 	}
-	fmt.Println(signer.Address().String(), signer.ID)
+	fmt.Println(signer.Address(ctx).String(), signer.ID)
 	return
 }
 
-func usage() {
-	fmt.Println("Usage of awseoa:")
-	fmt.Println("")
-	fmt.Println("   list     Show list of keys")
-	fmt.Println("            --tags: with tags")
-	fmt.Println("   new      Create key")
-	fmt.Println("   add-tags [keyID] [name:value] [name:value]...")
-	fmt.Println("            add tag to exist key")
+func ShowAddress(ctx context.Context, svc *kms.Client, id string) (err error) {
+	signer, err := awseoa.NewSigner(ctx, svc, id, big.NewInt(4))
+	if err != nil {
+		return
+	}
+	fmt.Println(signer.Address(ctx).String())
+	return
 }
 
 func main() {
 	var err error
-	listFlag := flag.NewFlagSet("list", flag.ExitOnError)
-	_ = flag.NewFlagSet("new", flag.ExitOnError)
-	_ = flag.NewFlagSet("add-tags", flag.ExitOnError)
+	ctx := context.Background()
+	commandList := buildCommands()
 
-	listFlag.BoolVar(&flagTags, "tags", flagTags, "Show tags")
-
-	if len(os.Args) == 1 {
-		usage()
+	myName := ""
+	if len(os.Args) > 0 {
+		myName = os.Args[0]
+	}
+	if len(os.Args) < 2 {
+		usage(myName, commandList)
 		return
 	}
+	commandName := os.Args[1]
+	var command *flag.FlagSet
+	for _, cmd := range commandList {
+		if cmd.Name() == commandName {
+			command = cmd
+			break
+		}
+	}
+	if command == nil {
+		usage(myName, commandList)
+		os.Exit(1)
+	}
 
-	svc, err := kmsutil.NewKMSClient()
+	svc, err := kmsutil.NewKMSClient(ctx)
 	if err != nil {
 		panic(err)
 	}
-	if err := listFlag.Parse(os.Args[2:]); err != nil {
-		panic(err)
-	}
 
-	switch os.Args[1] {
+	switch command.Name() {
 	case "list":
-		err = List(svc)
+		flagTags := true
+		command.BoolVar(&flagTags, "tags", flagTags, "Show tags")
+		if err := command.Parse(os.Args[2:]); err != nil {
+			command.Usage()
+			panic(err)
+		}
+		if command.NArg() > 0 {
+			command.Usage()
+			os.Exit(1)
+		}
+		err = List(ctx, svc, flagTags)
 	case "new":
-		err = New(svc)
+		if len(os.Args) > 2 {
+			command.Usage()
+			os.Exit(1)
+		}
+		err = New(ctx, svc)
 	case "add-tags":
+		if len(os.Args) < 4 {
+			command.Usage()
+			os.Exit(1)
+		}
 		keyID := os.Args[2]
 
-		for i := 3; i < len(os.Args); i++ {
-			parts := strings.Split(os.Args[i], ":")
-			err = AddTag(svc, keyID, parts[0], parts[1])
+		for _, arg := range os.Args[3:] {
+			parts := strings.Split(arg, ":")
+			err = AddTag(ctx, svc, keyID, parts[0], parts[1])
 		}
+	case "show-address":
+		if len(os.Args) != 3 {
+			command.Usage()
+			os.Exit(1)
+		}
+		keyID := os.Args[2]
+		err = ShowAddress(ctx, svc, keyID)
 	default:
-		usage()
+		usage(myName, commandList)
 	}
 
 	if err != nil {
