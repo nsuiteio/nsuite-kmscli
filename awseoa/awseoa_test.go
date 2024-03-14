@@ -33,21 +33,24 @@ func TestCreateSigner(t *testing.T) {
 	if os.Getenv("CREATE") == "" {
 		t.Skip()
 	}
+	ctx := context.Background()
 
-	s, err := CreateSigner(svc, chainID)
+	s, err := CreateSigner(ctx, svc, chainID)
 	fmt.Println(err)
 	assert.Nil(t, err)
 
-	fmt.Println(s.Address().String())
+	fmt.Println(s.Address(ctx).String())
 }
 
 func TestSetAlias(t *testing.T) {
-	s, err := NewSigner(svc, keyID, chainID)
+	ctx := context.Background()
+
+	s, err := NewSigner(ctx, svc, keyID, chainID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = s.SetAlias(s.Address().String())
+	err = s.SetAlias(ctx, s.Address(ctx).String())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +58,7 @@ func TestSetAlias(t *testing.T) {
 
 func TestSendEther(t *testing.T) {
 	topts.GasPrice, _ = new(big.Int).SetString("1000000000", 10)
-	topts.Context = context.TODO()
+	topts.Context = context.Background()
 
 	amount, _ := new(big.Int).SetString("1000000000000", 10)
 
@@ -69,7 +72,9 @@ func TestSendEther(t *testing.T) {
 }
 
 func TestEthereumSign(t *testing.T) {
-	s, err := NewSigner(svc, keyID, chainID)
+	ctx := context.Background()
+
+	s, err := NewSigner(ctx, svc, keyID, chainID)
 	assert.Nil(t, err)
 
 	msg := "0xd75be5d1b23bc1c3c22c0708a5c822f927f1eb8d609d684ef91996fd2bf2bbda"
@@ -78,10 +83,10 @@ func TestEthereumSign(t *testing.T) {
 
 	hash := toEthSignedMessageHash(msgb)
 
-	sig, err := s.EthereumSign(msgb)
+	sig, err := s.EthereumSign(ctx, msgb)
 	assert.Nil(t, err)
 
-	fmt.Println(s.Address().String())
+	fmt.Println(s.Address(ctx).String())
 	fmt.Println(encodeToHex(sig))
 
 	addr, err := recover(hash, sig)
@@ -90,13 +95,14 @@ func TestEthereumSign(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
+	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		panic(err)
 	}
 	svc = kms.NewFromConfig(cfg)
-	topts, err = NewKMSTransactor(svc, keyID, chainID)
+	topts, err = NewKMSTransactor(ctx, svc, keyID, chainID)
 	if err != nil {
 		panic(err)
 	}

@@ -15,15 +15,15 @@ jobs:
         os: [macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.19
+          go-version: ~1.22
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -50,7 +50,7 @@ jobs:
           app_id: ${{ secrets.ACTIONS_SUPPORTER_APP_ID }}
           private_key: ${{ secrets.ACTIONS_SUPPORTER_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
@@ -78,7 +78,7 @@ jobs:
           git tag $TAG_NAME
           git push origin $TAG_NAME
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
       - name: Archive
         run: |
           ls -la *
@@ -93,5 +93,6 @@ jobs:
         with:
           tag: ${{ env.TAG_NAME }}
           draft: true
+          generateReleaseNotes: true
           artifacts: "*.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
