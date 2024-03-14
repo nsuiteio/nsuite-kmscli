@@ -31,3 +31,19 @@ jobs:
         with:
           name: nsuite-kmscli-${{ runner.os }}
           path: nsuite-kmscli*
+
+  comfirm:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Archive
+        run: |
+          ls -la *
+          for file in nsuite-kmscli-*
+          do
+            chmod +x $file/*
+            zip $(basename $file).zip $file/*
+          done
+          ls -la *
