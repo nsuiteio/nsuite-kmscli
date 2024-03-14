@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: go build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: nsuite-kmscli-${{ runner.os }}
           path: nsuite-kmscli*
