@@ -20,17 +20,18 @@ import (
 )
 
 var (
-	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
+	secp256k1N, _ = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+		16)
 	secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
 )
 
-func NewKMSTransactor(svc *kms.Client, id string, chainID *big.Int) (*bind.TransactOpts, error) {
-	s, err := NewSigner(svc, id, chainID)
+func NewKMSTransactor(ctx context.Context, svc *kms.Client, id string, chainID *big.Int) (*bind.TransactOpts, error) {
+	s, err := NewSigner(ctx, svc, id, chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	pub, err := s.Pubkey()
+	pub, err := s.Pubkey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func NewKMSTransactor(svc *kms.Client, id string, chainID *big.Int) (*bind.Trans
 			signer := types.NewEIP155Signer(s.chainID)
 			digest := signer.Hash(tx).Bytes()
 
-			sig, err := s.SignDigest(digest)
+			sig, err := s.SignDigest(ctx, digest)
 			if err != nil {
 				return nil, err
 			}
@@ -65,34 +66,34 @@ type Signer struct {
 	chainID *big.Int
 }
 
-func NewSigner(svc *kms.Client, id string, chainID *big.Int) (*Signer, error) {
+func NewSigner(ctx context.Context, svc *kms.Client, id string, chainID *big.Int) (*Signer, error) {
 	s := &Signer{Client: svc, ID: id, pubkey: nil, chainID: chainID}
-	_, err := s.Pubkey()
+	_, err := s.Pubkey(ctx)
 	return s, err
 }
 
-func CreateSigner(svc *kms.Client, chainID *big.Int) (*Signer, error) {
+func CreateSigner(ctx context.Context, svc *kms.Client, chainID *big.Int) (*Signer, error) {
 	in := new(kms.CreateKeyInput)
 	in.KeySpec = kmstypes.KeySpecEccSecgP256k1
 	in.KeyUsage = kmstypes.KeyUsageTypeSignVerify
 	in.Origin = kmstypes.OriginTypeAwsKms
 
-	out, err := svc.CreateKey(context.TODO(), in)
+	out, err := svc.CreateKey(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	id := *out.KeyMetadata.KeyId
-	s, err := NewSigner(svc, id, chainID)
+	s, err := NewSigner(ctx, svc, id, chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.SetAlias(s.Address().String())
+	err = s.SetAlias(ctx, s.Address(ctx).String())
 	return s, err
 }
 
-func (s Signer) Address() common.Address {
-	pub, err := s.Pubkey()
+func (s Signer) Address(ctx context.Context) common.Address {
+	pub, err := s.Pubkey(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -104,11 +105,11 @@ func (s Signer) Address() common.Address {
 	return ret
 }
 
-func (s Signer) SetAlias(alias string) error {
+func (s Signer) SetAlias(ctx context.Context, alias string) error {
 	in := new(kms.CreateAliasInput)
 	in.AliasName = aws.String("alias/" + alias)
 	in.TargetKeyId = aws.String(s.ID)
-	_, err := s.Client.CreateAlias(context.TODO(), in)
+	_, err := s.Client.CreateAlias(ctx, in)
 	if err != nil {
 		e := errors.New("AlreadyExistsException")
 		if errors.As(err, (interface{})(&e)) {
@@ -119,14 +120,14 @@ func (s Signer) SetAlias(alias string) error {
 	return nil
 }
 
-func (s Signer) Pubkey() ([]byte, error) {
+func (s Signer) Pubkey(ctx context.Context) ([]byte, error) {
 	if s.pubkey != nil {
 		return s.pubkey, nil
 	}
 	in := &kms.GetPublicKeyInput{
 		KeyId: aws.String(s.ID),
 	}
-	out, err := s.Client.GetPublicKey(context.TODO(), in)
+	out, err := s.Client.GetPublicKey(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -146,14 +147,14 @@ func (s Signer) Pubkey() ([]byte, error) {
 	return seq.Pubkey.Bytes, nil
 }
 
-func (s Signer) SignDigest(digest []byte) (signature []byte, err error) {
+func (s Signer) SignDigest(ctx context.Context, digest []byte) (signature []byte, err error) {
 	in := &kms.SignInput{
 		KeyId:            aws.String(s.ID),
 		Message:          digest,
 		SigningAlgorithm: kmstypes.SigningAlgorithmSpecEcdsaSha256,
 		MessageType:      kmstypes.MessageTypeDigest,
 	}
-	out, err := s.Client.Sign(context.TODO(), in)
+	out, err := s.Client.Sign(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +188,7 @@ func (s Signer) SignDigest(digest []byte) (signature []byte, err error) {
 			return nil, err
 		}
 
-		if reflect.DeepEqual(s.Address().Bytes(), candidate.Bytes()) {
+		if reflect.DeepEqual(s.Address(ctx).Bytes(), candidate.Bytes()) {
 			signature = append(signature, byte(v))
 			break
 		}
@@ -196,9 +197,9 @@ func (s Signer) SignDigest(digest []byte) (signature []byte, err error) {
 	return signature, nil
 }
 
-func (s Signer) EthereumSign(msg []byte) (signature []byte, err error) {
+func (s Signer) EthereumSign(ctx context.Context, msg []byte) (signature []byte, err error) {
 	digest := toEthSignedMessageHash(msg)
-	sig, err := s.SignDigest(digest)
+	sig, err := s.SignDigest(ctx, digest)
 	if err != nil {
 		return nil, err
 	}
@@ -210,8 +211,8 @@ func (s Signer) EthereumSign(msg []byte) (signature []byte, err error) {
 	return sig, nil
 }
 
-func (s Signer) TransactOpts() (*bind.TransactOpts, error) {
-	return NewKMSTransactor(s.Client, s.ID, s.chainID)
+func (s Signer) TransactOpts(ctx context.Context) (*bind.TransactOpts, error) {
+	return NewKMSTransactor(ctx, s.Client, s.ID, s.chainID)
 }
 
 func publicKeyBytesToAddress(pub []byte) (common.Address, error) {
@@ -223,7 +224,8 @@ func publicKeyBytesToAddress(pub []byte) (common.Address, error) {
 }
 
 func toEthSignedMessageHash(message []byte) []byte {
-	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message),
+		message)
 	return keccak256([]byte(msg))
 }
 

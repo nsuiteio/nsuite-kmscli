@@ -13,26 +13,26 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func NewKMSClient() (*kms.Client, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+func NewKMSClient(ctx context.Context) (*kms.Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return kms.NewFromConfig(cfg), nil
 }
 
-func TransactOptsFromAddress(svc *kms.Client, addr common.Address, chainID *big.Int) (*bind.TransactOpts, error) {
-	keyID, err := KeyIDFromAddress(svc, addr)
+func TransactOptsFromAddress(ctx context.Context, svc *kms.Client, addr common.Address, chainID *big.Int) (*bind.TransactOpts, error) {
+	keyID, err := KeyIDFromAddress(ctx, svc, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	return awseoa.NewKMSTransactor(svc, keyID, chainID)
+	return awseoa.NewKMSTransactor(ctx, svc, keyID, chainID)
 }
 
-func KeyIDFromAddress(svc *kms.Client, addr common.Address) (string, error) {
+func KeyIDFromAddress(ctx context.Context, svc *kms.Client, addr common.Address) (string, error) {
 	in := &kms.ListAliasesInput{}
-	out, err := svc.ListAliases(context.TODO(), in)
+	out, err := svc.ListAliases(ctx, in)
 	if err != nil {
 		return "", err
 	}

@@ -95,12 +95,12 @@ func usage(name string, commandList []*flag.FlagSet) {
 	fmt.Println(buffer.String())
 }
 
-func List(svc *kms.Client, flagTags bool) (err error) {
+func List(ctx context.Context, svc *kms.Client, flagTags bool) (err error) {
 
 	var aliases []kmstypes.AliasListEntry
 	in := &kms.ListAliasesInput{}
 	for {
-		out, err := svc.ListAliases(context.TODO(), in)
+		out, err := svc.ListAliases(ctx, in)
 		if err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ func List(svc *kms.Client, flagTags bool) (err error) {
 		tags := ""
 		if flagTags {
 			in := &kms.ListResourceTagsInput{KeyId: a.TargetKeyId}
-			out, err := svc.ListResourceTags(context.TODO(), in)
+			out, err := svc.ListResourceTags(ctx, in)
 			if err != nil {
 				return err
 			}
@@ -143,7 +143,7 @@ func List(svc *kms.Client, flagTags bool) (err error) {
 	return
 }
 
-func AddTag(svc *kms.Client, keyID, tagKey, tagValue string) (err error) {
+func AddTag(ctx context.Context, svc *kms.Client, keyID, tagKey, tagValue string) (err error) {
 	in := &kms.TagResourceInput{
 		KeyId: aws.String(keyID),
 		Tags: []kmstypes.Tag{
@@ -153,30 +153,31 @@ func AddTag(svc *kms.Client, keyID, tagKey, tagValue string) (err error) {
 			},
 		},
 	}
-	_, err = svc.TagResource(context.TODO(), in)
+	_, err = svc.TagResource(ctx, in)
 	return
 }
 
-func New(svc *kms.Client) (err error) {
-	signer, err := awseoa.CreateSigner(svc, big.NewInt(4))
+func New(ctx context.Context, svc *kms.Client) (err error) {
+	signer, err := awseoa.CreateSigner(ctx, svc, big.NewInt(4))
 	if err != nil {
 		return
 	}
-	fmt.Println(signer.Address().String(), signer.ID)
+	fmt.Println(signer.Address(ctx).String(), signer.ID)
 	return
 }
 
-func ShowAddress(svc *kms.Client, id string) (err error) {
-	signer, err := awseoa.NewSigner(svc, id, big.NewInt(4))
+func ShowAddress(ctx context.Context, svc *kms.Client, id string) (err error) {
+	signer, err := awseoa.NewSigner(ctx, svc, id, big.NewInt(4))
 	if err != nil {
 		return
 	}
-	fmt.Println(signer.Address().String())
+	fmt.Println(signer.Address(ctx).String())
 	return
 }
 
 func main() {
 	var err error
+	ctx := context.Background()
 	commandList := buildCommands()
 
 	myName := ""
@@ -200,7 +201,7 @@ func main() {
 		return
 	}
 
-	svc, err := kmsutil.NewKMSClient()
+	svc, err := kmsutil.NewKMSClient(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -213,19 +214,19 @@ func main() {
 			command.Usage()
 			panic(err)
 		}
-		err = List(svc, flagTags)
+		err = List(ctx, svc, flagTags)
 	case "new":
-		err = New(svc)
+		err = New(ctx, svc)
 	case "add-tags":
 		keyID := os.Args[2]
 
 		for i := 3; i < len(os.Args); i++ {
 			parts := strings.Split(os.Args[i], ":")
-			err = AddTag(svc, keyID, parts[0], parts[1])
+			err = AddTag(ctx, svc, keyID, parts[0], parts[1])
 		}
 	case "show-address":
 		keyID := os.Args[2]
-		err = ShowAddress(svc, keyID)
+		err = ShowAddress(ctx, svc, keyID)
 	default:
 		usage(myName, commandList)
 	}
