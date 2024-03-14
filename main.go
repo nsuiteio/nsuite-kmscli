@@ -198,7 +198,7 @@ func main() {
 	}
 	if command == nil {
 		usage(myName, commandList)
-		return
+		os.Exit(1)
 	}
 
 	svc, err := kmsutil.NewKMSClient(ctx)
@@ -214,17 +214,33 @@ func main() {
 			command.Usage()
 			panic(err)
 		}
+		if command.NArg() > 0 {
+			command.Usage()
+			os.Exit(1)
+		}
 		err = List(ctx, svc, flagTags)
 	case "new":
+		if len(os.Args) > 2 {
+			command.Usage()
+			os.Exit(1)
+		}
 		err = New(ctx, svc)
 	case "add-tags":
+		if len(os.Args) < 4 {
+			command.Usage()
+			os.Exit(1)
+		}
 		keyID := os.Args[2]
 
-		for i := 3; i < len(os.Args); i++ {
-			parts := strings.Split(os.Args[i], ":")
+		for _, arg := range os.Args[3:] {
+			parts := strings.Split(arg, ":")
 			err = AddTag(ctx, svc, keyID, parts[0], parts[1])
 		}
 	case "show-address":
+		if len(os.Args) != 3 {
+			command.Usage()
+			os.Exit(1)
+		}
 		keyID := os.Args[2]
 		err = ShowAddress(ctx, svc, keyID)
 	default:
