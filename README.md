@@ -14,4 +14,7 @@ $ nsuite-kmscli new
 
 $ nsuite-kmscli add-tags 01234567-abcd-1234-9876-02468ace79bf tag1:value1 tag2:value2
 # tags added to key
+
+$ nsuite-kmscli show-address 01234567-abcd-1234-9876-02468ace79bf
+# show address of key (normally address is the same as alias)
 ```
