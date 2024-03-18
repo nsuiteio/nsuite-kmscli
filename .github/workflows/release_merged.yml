@@ -82,10 +82,14 @@ jobs:
       - name: Archive
         run: |
           ls -la *
-          for file in nsuite-kmscli-*
+          for dir in nsuite-kmscli-*
           do
-            chmod +x $file/*
-            tar czf $(basename $file).tar.gz $file/*
+            target=$(basename $dir).zip
+            echo "making $target"
+            pushd $dir
+            chmod +x *
+            zip ../$target *
+            popd
           done
           ls -la *
 
