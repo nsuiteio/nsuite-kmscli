@@ -85,7 +85,7 @@ jobs:
           for file in nsuite-kmscli-*
           do
             chmod +x $file/*
-            zip $(basename $file).zip $file/*
+            tar czf $(basename $file).tar.gz $file/*
           done
           ls -la *
 
@@ -94,5 +94,5 @@ jobs:
           tag: ${{ env.TAG_NAME }}
           draft: true
           generateReleaseNotes: true
-          artifacts: "*.zip"
+          artifacts: "*.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
