@@ -43,9 +43,11 @@ jobs:
           ls -la *
           for dir in nsuite-kmscli-*
           do
+            target=$(basename $dir).zip
+            echo "making $target"
             pushd $dir
             chmod +x *
-            zip ../$(basename $dir).zip *
+            zip ../$target *
             popd
           done
           ls -la *
