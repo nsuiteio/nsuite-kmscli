@@ -84,11 +84,11 @@ jobs:
           ls -la *
           for dir in nsuite-kmscli-*
           do
-            target=$(basename $dir).zip
+            target=$(basename $dir).tar.gz
             echo "making $target"
             pushd $dir
             chmod +x *
-            zip ../$target *
+            tar czf ../$target *
             popd
           done
           ls -la *
@@ -98,5 +98,5 @@ jobs:
           tag: ${{ env.TAG_NAME }}
           draft: true
           generateReleaseNotes: true
-          artifacts: "*.zip"
+          artifacts: "*.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
